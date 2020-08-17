@@ -7,3 +7,7 @@ This Bot is intended to keep wikipedia free from vandalism. This bot requires <i
 - - VandalismVandalism
 - - Illegal Username
 - Should notify the admins for blocking?
+# Features Used
+- Is the user logged in
+- Namespace of the page
+- Difference between current revisionID and previousRevisionID
