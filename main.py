@@ -87,7 +87,9 @@ def preprocess(x):
             X[i,55] = len(ill.findall(rev['user']))
     X[:,0] = 1 #Constant or bias value
     return X
-def featureContent()
+def featureContent(ID ={},X):
+    
+    return X
 def fetch():
     X = []
     with open(basepath + 'X.json','r') as fp:
