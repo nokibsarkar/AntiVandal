@@ -10,4 +10,4 @@ matplotlib
 # for database
 sqlite3
 # string comparison
-diff-match-patch
+diff-match-patch/python3
