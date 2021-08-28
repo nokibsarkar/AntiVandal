@@ -64,6 +64,7 @@ def process_batch(query={}, ids=[], cache={}, last_time=0):
     `queries`: The list of the values
     `cache`: A dictionary with `ParentID` as key and `Current revision` as Value
     """
+    print('\t\t\t\t\Current Timestamp : ', last_time.isoformat())
     global backlog, revision_backlog, success, total, suceed
     for id in ids:
         total += 1
@@ -98,10 +99,10 @@ def process_batch(query={}, ids=[], cache={}, last_time=0):
           print('\tError : %s' % e)
           editor = None
         timestamp = datetime.fromisoformat(revision['timestamp'][:-1])
-         
+        print(f'{timestamp} > {last_time} : {timestamp > last_time}')
         if timestamp > last_time:
             last_time = timestamp
-            print('\t\t\t\t\Current Timestamp : ', timestamp.isoformat())
+            print('\t\t\t\t\tCurrent Timestamp : ', timestamp.isoformat())
         insertable_text = None
 
         backlog.discard(current_id)
@@ -146,7 +147,7 @@ def fetch(
     rate=60/40
 ):
     global cache, insert_list, backlog
-    k = 500
+    k = 5
     cont = None
     while k:
         print('Epoch', k)
@@ -236,7 +237,8 @@ def fetch(
         sleep(rate)
 if __name__ == '__main__':
   try:
-    last_time = datetime.fromisoformat('2021-07-28T00:00:00')
+    last_time : datetime = datetime.fromisoformat('2021-07-28T00:00:00')
+    print(last_time)
     """
     This script will be used for grabbing the rollbacks from wikipedia
     """
