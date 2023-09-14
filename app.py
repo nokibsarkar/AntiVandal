@@ -7,7 +7,7 @@ app = Flask(__name__)
 
 @app.route('/deploy/<string:token>')
 def deploy(token):
-    if token == "2":
+    if token == "DEPLOY_TOKEN":
         os.system('& cd ~/www/python/src && git pull && webservice restart > ~/nokib.log 2>&1 ')
         return "Deployed!"
     else:
