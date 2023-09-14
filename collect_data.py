@@ -246,5 +246,6 @@ if __name__ == '__main__':
     #   last_time = datetime.fromisoformat(fp.read())
     fetch(last_time=last_time)
   except Exception as e:
+    # Id = 1
     print('Error Happened : %s' % e)
     print('Exiting....................')
