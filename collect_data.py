@@ -85,7 +85,43 @@ def _calculate_diff(older_revid, newer_revid):
         'timestamp': None,
         'is_diff': True
     }
-    if older_revid >= newer_revid or older_revid == 0:
+    print(f'', older_revid > newer_revid)
+    if newer_revid > older_revid:
+        data = {
+            "action": "compare",
+            "format": "json",
+            "assertuser": "Nokib Sarkar",
+            "fromrev": older_revid,
+            "torev": newer_revid,
+            "prop": "diff|ids|title|comment|diffsize|rel|size|timestamp|user",
+            "slots": "main",
+            "difftype": "unified",
+            "formatversion": "2",
+            "utf8": "1"
+        }
+        response = WikiSession.post(data)
+        if 'error' in response:
+            print(response['error'])
+            return
+        compare = response['compare']
+        if 'bodies' not in compare:
+            print('No bodies found')
+            return
+        bodies = compare['bodies']
+        if 'main' not in bodies:
+            print('No main body found')
+            return
+        diff : str = bodies['main']
+        result['diff'] = diff
+        result['id'] = newer_revid
+        result['parent_id'] = older_revid
+        result['comment'] = compare['tocomment']
+        result['editor'] = compare['touser']
+        result['timestamp'] = datetime.fromisoformat(compare['totimestamp'][:-1])
+        result['is_diff'] = True
+        result['title'] = compare['totitle']
+        result['ns'] = compare['tons']
+    else:
         data = {
             "action": "query",
             "format": "json",
@@ -139,41 +175,6 @@ def _calculate_diff(older_revid, newer_revid):
         result['is_diff'] = False
         result['title'] = page['title']
         result['ns'] = page['ns']
-    else:
-        data = {
-            "action": "compare",
-            "format": "json",
-            "assertuser": "Nokib Sarkar",
-            "fromrev": older_revid,
-            "torev": newer_revid,
-            "prop": "diff|ids|title|comment|diffsize|rel|size|timestamp|user",
-            "slots": "main",
-            "difftype": "unified",
-            "formatversion": "2",
-            "utf8": "1"
-        }
-        response = WikiSession.post(data)
-        if 'error' in response:
-            print(response['error'])
-            return
-        compare = response['compare']
-        if 'bodies' not in compare:
-            print('No bodies found')
-            return
-        bodies = compare['bodies']
-        if 'main' not in bodies:
-            print('No main body found')
-            return
-        diff : str = bodies['main']
-        result['diff'] = diff
-        result['id'] = newer_revid
-        result['parent_id'] = older_revid
-        result['comment'] = compare['tocomment']
-        result['editor'] = compare['touser']
-        result['timestamp'] = datetime.fromisoformat(compare['totimestamp'][:-1])
-        result['is_diff'] = True
-        result['title'] = compare['totitle']
-        result['ns'] = compare['tons']
     return result
 def _collect_compare(conn, older_revid, newer_revid):
     # Check if the revision is already collected
@@ -195,6 +196,7 @@ def _collect_label(conn, rev_id, labeller, label):
     return rev_id
 
 def collect_sample(conn, user_id, revisions, label):
+    print(revisions)
     for older_id, newer_id in revisions:
         newer_id = _collect_compare(conn, older_id, newer_id)
         if newer_id is None:

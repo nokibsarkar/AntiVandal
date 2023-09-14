@@ -29,12 +29,20 @@ class antiVandal {
             let parent = e instanceof HTMLLIElement ? e : e.classList.contains("mw-enhanced-rc-nested") ? e.parentElement : e.parentElement.parentElement.parentElement
             if (e.dataset.antiVandal == '1') //already visited
                 return;
-            const diffElement = parent.querySelector('a.mw-changeslist-diff');
-            var oldID = 0;
-            if (diffElement) {
-                const link = diffElement.href;
-                oldID = link.match(this.oldidRegex)[1];
+            let oldID = 0;
+            if (parent.dataset.oldID == undefined) {
+                const diffElement = parent.querySelector('a.mw-changeslist-diff');
+                if (diffElement) {
+                    const link = diffElement.href;
+                    oldID = link.match(this.oldidRegex)[1];
+                } else {
+                    console.log(parent)
+                    oldID = 0;
+                }
+                parent.dataset.oldID = oldID;
             }
+
+            console.log(oldID)
             var goodButton = document.createElement("button"), badButton = document.createElement("button");
             goodButton.onclick = (e) => {
                 this.push(oldID, parent.dataset.mwRevid, 1);
@@ -80,23 +88,25 @@ class antiVandal {
             return;
         }
         [neg, pos] = [
-            [...new Set(neg.split(','))].map(v => v * 1), // negative
-            [...new Set(pos.split(','))].map(v => 1 * v) //positive
+            neg.split(',')?.filter(v => v != '').map(v => v * 1), // negative
+            pos.split(',')?.filter(v => v != '').map(v => 1 * v) //positive
         ];
-        console.log(neg, pos)
         let data = {
             by: this.user,
             positive: pos,
             negative: neg
         }
+        console.log(data)
+        const done = this.done;
         $.post({
             url: this.target,
             crossDomain: true,
             data: JSON.stringify(data),
-            contentType : 'application/json',
+            contentType: 'application/json',
             dataType: 'json',
             success: (d) => {
                 console.log(d)
+                done(d);
             }
         });
     }

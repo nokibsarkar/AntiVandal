@@ -7,7 +7,7 @@ from collect_data import collect_sample, WikiSession, SQL_INIT
 app = Flask(__name__)
 CORS(app, resources={
     "/sample/*": {
-        "origins": "https://bn.wikipedia.org",
+        "origins": ["https://bn.wikipedia.org", "https://bn.m.wikipedia.org"],
         "methods": ["POST", "OPTIONS"]
     }
 })
