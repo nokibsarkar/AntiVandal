@@ -23,7 +23,7 @@ def before_request():
     g.db = sqlite3.connect("data.db")
     global DATABASE_INIT
     if not DATABASE_INIT:
-        g.db.execute(SQL_INIT)
+        g.db.executescript(SQL_INIT)
         g.db.commit()
         DATABASE_INIT = True
 @app.after_request
