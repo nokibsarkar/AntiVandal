@@ -5,7 +5,12 @@ from flask_cors import CORS, cross_origin
 import os, sqlite3
 from collect_data import collect_sample, WikiSession, SQL_INIT
 app = Flask(__name__)
-
+CORS(app, resources={
+    "/sample/*": {
+        "origins": "https://bn.wikipedia.org",
+        "methods": ["POST", "OPTIONS"]
+    }
+})
 @app.route('/deploy/<string:token>')
 def deploy(token):
     if token == "DEPLOY_TOKEN":
@@ -23,6 +28,7 @@ def before_request():
     g.db = sqlite3.connect("data.db")
     global DATABASE_INIT
     if not DATABASE_INIT:
+        WikiSession.init()
         g.db.executescript(SQL_INIT)
         g.db.commit()
         DATABASE_INIT = True
@@ -33,20 +39,23 @@ def after_request(response):
 
 
 @app.post("/sample/<int:user_id>")
-@cross_origin(origins=['https://bn.wikipedia.org'])
 def collect_samples(user_id):
     data = request.get_json()
-    positives = []
-    negatives = []
-    len_positives = len(data['positives'])
-    len_negatives = len(data['negatives'])
-    for i in range(0, len_positives, 2):
-        positives.append((data['positives'][i], data['positives'][i+1]))
-    for i in range(0, len_negatives, 2):
-        negatives.append((data['negatives'][i], data['negatives'][i+1]))
-    collect_sample(g.db, user_id, positives, 'good')
-    collect_sample(g.db, user_id, negatives, 'bad')
-    return Response(status=200)
+    if 'positivs' not in data:
+        positives = []
+        len_positives = len(data['positive'])
+        for i in range(0, len_positives, 2):
+            positives.append((data['positive'][i], data['positive'][i+1]))
+        collect_sample(g.db, user_id, positives, 'good')
+
+
+    if 'negative' in data:
+        negatives = []
+        len_negatives = len(data['negative'])
+        for i in range(0, len_negatives, 2):
+            negatives.append((data['negative'][i], data['negative'][i+1]))
+        collect_sample(g.db, user_id, negatives, 'bad')
+    return {'success' : True}
 
 
 @app.get('/subscribe')
@@ -86,4 +95,4 @@ def home():
     return render_template('index.html')
 
 if __name__ == '__main__':
-    app.run()
+    app.run(debug=True)

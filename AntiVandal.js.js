@@ -92,7 +92,8 @@ class antiVandal {
         $.post({
             url: this.target,
             crossDomain: true,
-            data: data,
+            data: JSON.stringify(data),
+            contentType : 'application/json',
             dataType: 'json',
             success: (d) => {
                 console.log(d)
