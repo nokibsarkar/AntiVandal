@@ -7,6 +7,7 @@ app = Flask(__name__)
 
 @app.route('/deploy/<string:token>')
 def deploy(token):
+    return os.environ
     if token == os.environ.get('DEPLOY_TOKEN'):
         os.system('git pull')
         os.system('pip install -r requirements.txt')
