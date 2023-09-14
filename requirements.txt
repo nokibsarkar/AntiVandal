@@ -1,13 +1,2 @@
-# Pywikibot for data extract
-ing and editing on wikipedia
-pywikibot
-# For computation
-numpy
-scikit-learn
-pandas
-# for graphical interface
-matplotlib
-# for database
-sqlite3
-# string comparison
-diff-match-patch/python3
+flask
+flask-cors
