@@ -12,7 +12,7 @@ def deploy(token):
         os.system('pip install -r requirements.txt')
         return Response(status=200)
     else:
-        return Response(status=403)
+        return Response(status=400)
 
 @app.post("/sample/<int:user_id>")
 @cross_origin(origins="*")
