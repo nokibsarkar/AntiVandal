@@ -7,13 +7,11 @@ app = Flask(__name__)
 
 @app.route('/deploy/<string:token>')
 def deploy(token):
-    return os.environ
-    if token == os.environ.get('DEPLOY_TOKEN'):
-        os.system('git pull')
-        os.system('pip install -r requirements.txt')
-        return Response(status=200)
+    if token == "2":
+        os.system('& cd ~/www/python/src && git pull && webservice restart > ~/nokib.log 2>&1 ')
+        return "Deployed!"
     else:
-        return Response(status=400)
+        return Response(status=404)
 
 @app.post("/sample/<int:user_id>")
 @cross_origin(origins="*")
