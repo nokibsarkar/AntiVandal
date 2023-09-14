@@ -33,7 +33,7 @@ def after_request(response):
 
 
 @app.post("/sample/<int:user_id>")
-@cross_origin(origins="*")
+@cross_origin(origins=['https://bn.wikipedia.org'])
 def collect_samples(user_id):
     data = request.get_json()
     positives = []
