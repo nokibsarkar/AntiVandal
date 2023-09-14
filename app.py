@@ -8,7 +8,7 @@ app = Flask(__name__)
 @app.route('/deploy/<string:token>')
 def deploy(token):
     if token == "DEPLOY_TOKEN":
-        os.system('& cd ~/www/python/src && git pull && webservice restart > ~/nokib.log 2>&1 ')
+        os.system('cd ~/www/python/src && git pull && webservice restart > ~/nokib.log 2>&1 &')
         return "Deployed!"
     else:
         return Response(status=404)
