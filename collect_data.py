@@ -1,251 +1,202 @@
-from difflib import unified_diff as diff
 import sqlite3
-from requests import Session
 from datetime import datetime
 from time import sleep
-if 'conn' in dir():
-    print('Previous Database Closed')
-    conn.close()
-conn = sqlite3.connect('database.db')
-cur = conn.cursor()
+from requests import Session
+from settings import OAUTH_ACCESS_TOKEN
 SQL_INIT = """
 CREATE TABLE IF NOT EXISTS `Revisions` (
-  `RevID` INTEGER PRIMARY KEY,
-  `Title` TEXT NOT NULL,
-  `ParentID` INTEGER NULL DEFAULT NULL,
-  `Comment` TEXT NULL DEFAULT NULL,
-  `Anonymous` BOOLEAN DEFAULT FALSE,
-  `Editor` VARCHAR(90) NULL DEFAULT NULL,
-  `Text` TEXT NULL DEFAULT NULL,
-  `Deleted` BOOLEAN DEFAILT FALSE
+    `id` INTEGER PRIMARY KEY,
+    `title` TEXT NOT NULL,
+    `ns` INTEGER NOT NULL,
+    `diff` TEXT NULL DEFAULT NULL,
+    `parent_id` INTEGER NULL DEFAULT NULL,
+    `comment` TEXT NULL DEFAULT NULL,
+    `editor` TEXT NULL DEFAULT NULL,
+    `timestamp` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `is_diff` BOOLEAN DEFAULT FALSE
 ) WITHOUT ROWID;
-CREATE INDEX IF NOT EXISTS `ParentID` ON `Revisions`(`ParentID`);
+CREATE INDEX IF NOT EXISTS `parent_id` ON `Revisions`(`parent_id`);
 CREATE TABLE IF NOT EXISTS `Labels` (
-  `RevID` INTEGER REFERENCES `Revisions` (`RevID`),
-  `Labeller` VARCHAR(100) NOT NULL,
-  `Vandalism` BOOLEAN DEFAULT FALSE,
-  `Timestamp` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    `rev_id` INTEGER REFERENCES `Revisions` (`id`),
+    `labeller` VARCHAR(100) NOT NULL,
+    `label` VARCHAR(100) NOT NULL,
+    `timestamp` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 """
-SQL_INSERT_REVISION = """
+_SQL_INSERT_REVISION = """
 INSERT INTO `Revisions`
-  (`Title` ,`RevID`, `ParentID`, `Comment`, `Anonymous`, `Editor`, `Deleted`, `Text`)
+    (`id`, `title`, `ns`, `diff`, `parent_id`, `comment`, `editor`, `timestamp`, `is_diff`)
 VALUES
-  (?, ?,?,?,?,?,?, ?);
+    (:id, :title, :ns, :diff, :parent_id, :comment, :editor, :timestamp, :is_diff);
 """
-SQL_UPDATE_REVISION = """
-UPDATE `Revisions` SET `Text` = ? WHERE `ParentID` = ?
+_SQL_INSERT_LABEL = """
+INSERT INTO `Labels`
+    (`rev_id`, `labeller`, `label`)
+VALUES
+    (:rev_id, :labeller, :label);
 """
-cur.executescript(SQL_INIT)
-mw = 'http://www.mediawiki.org/xml/export-0.11/'  # The namespace
-api_endpoint = 'https://bn.wikipedia.org/w/api.php'  # Wikipedia API endpoint
-ses = Session()
-cache = {}
-insert_list = set()
-backlog = set()  # The Parent IDs which should be fetched
-revision_backlog = set()
-
-params_live = {
-    "action": "query",
-    "format": "json",
-    "prop": "revisions",
-    "utf8": 1,
-    "indexpageids": 1,
-    "rvprop": "comment|content|ids|flags|user|timestamp",
-    "rvslots": "main"
-}
-total = 0
-suceed = set()
-success = 0
-
-
-def process_batch(query={}, ids=[], cache={}, last_time=0):
-    """This function will be called on update statement each batch of results
-    `queries`: The list of the values
-    `cache`: A dictionary with `ParentID` as key and `Current revision` as Value
-    """
-    print('\t\t\t\t\Current Timestamp : ', last_time.isoformat())
-    global backlog, revision_backlog, success, total, suceed
-    for id in ids:
-        total += 1
-        page = query[id]
-        print(page['title'])
+_SQL_FETCH_REVISION_BY_ID = """
+SELECT `id` FROM `Revisions` WHERE `id` = :id;
+"""
+class WikiSession:
+    session = Session()
+    BNWIKI_API_URL = 'https://bn.wikipedia.org/w/api.php'
+    last_time = 0
+    interval = 1
+    @staticmethod
+    def init():
+        WikiSession.session.headers.update({
+            "User-Agent": "",
+            "Accept": "application/json",
+            "Authorization": "Bearer " + OAUTH_ACCESS_TOKEN
+        })
+        WikiSession.session.params.update({
+            "format": "json",
+            "utf8": "1"
+        })
+        WikiSession.session
+    @staticmethod
+    def get(params={}):
+        now = datetime.now().timestamp()
+        sleeping_time = WikiSession.interval - (now - WikiSession.last_time)
+        if sleeping_time > 0:
+            print('Sleeping for %f seconds' % sleeping_time)
+            sleep(sleeping_time)
+        return WikiSession.session.get(WikiSession.BNWIKI_API_URL, params=params).json()
+    @staticmethod
+    def post(data={}):
+        now = datetime.now().timestamp()
+        sleeping_time = WikiSession.interval - (now - WikiSession.last_time)
+        if sleeping_time > 0:
+            print('Sleeping for %s seconds' % sleeping_time)
+            sleep(sleeping_time)
+        
+        return WikiSession.session.post(WikiSession.BNWIKI_API_URL, data=data).json()
+    
+def _calculate_diff(older_revid, newer_revid):
+    result = {
+        'title' : None,
+        'ns' : None,
+        'diff': None,
+        'id': None,
+        'parent_id': None,
+        'comment': None,
+        'editor': None,
+        'timestamp': None,
+        'is_diff': True
+    }
+    if older_revid >= newer_revid or older_revid == 0:
+        data = {
+            "action": "query",
+            "format": "json",
+            "prop": "revisions",
+            "utf8": "1",
+            "rvprop": "comment|content|ids|flags|user|timestamp",
+            "rvslots": "main",
+            "revids": newer_revid
+        }
+        response = WikiSession.get(data)
+        if 'error' in response:
+            print(response['error'])
+            return None
+        pages = list(response['query']['pages'].values())
+        if len(pages) == 0:
+            print('No pages found')
+            return None
+        page = pages[0]
         if 'revisions' not in page:
-            revision_backlog.add(page['title'])
-            print('\tRevision not found')
-            continue
-        success += 1
-        if page['title'] in revision_backlog:
-            print('\t\t', page['title'], 'Revived')
-            revision_backlog.remove(page['title'])
-        title = page['title']
-        suceed.add(title)
-        revision = page['revisions'][0]
+            print('No revisions found')
+            return None
+        revisions = page['revisions']
+        if len(revisions) == 0:
+            print('No revisions found')
+            return None
+        revision = revisions[0]
         try:
-          current_text = revision['slots']['main']['*'].splitlines()
+            current_text = revision['slots']['main']['*']
         except Exception as e:
-          print('\tError : %s' % e)
-          current_text = ''
-        current_id = revision['revid']
+            print('\tError : %s' % e)
+            current_text = ''
+        id = revision['revid']
         parent_id = revision['parentid']
         try:
-          comment = revision['comment']
+            comment = revision['comment']
         except Exception as e:
-          print('\tError : %s' % e)
-          comment = None
+            print('\tError : %s' % e)
+            comment = None
         try:
-          editor = revision['user']
+            editor = revision['user']
         except Exception as e:
-          print('\tError : %s' % e)
-          editor = None
+            print('\tError : %s' % e)
+            editor = None
         timestamp = datetime.fromisoformat(revision['timestamp'][:-1])
-        print(f'{timestamp} > {last_time} : {timestamp > last_time}')
-        if timestamp > last_time:
-            last_time = timestamp
-            print('\t\t\t\t\tCurrent Timestamp : ', timestamp.isoformat())
-        insertable_text = None
-
-        backlog.discard(current_id)
-        print(f'\tBacklog size : {len(backlog)}')
-        success = +1
-        if current_id in cache:
-            print("""\tPut the difference""")
-            insertable_text = '\n'.join(diff(current_text, cache[current_id]))
-            del cache[current_id]
-            print('\tUpdate parameters')
-            yield insertable_text, current_id
-        else:
-            print(f'\tcache[{current_id}] not found')
-            if not parent_id:
-                print('\tFirst Revision', title)
-                """
-        ParentID does not exist
-        So this is the first revision
-        Insert it in raw format
-        """
-                parent_id = None
-                insertable_text = '\n'.join(diff('', current_text))
-            else:
-                cache[parent_id] = current_text
-                backlog.add(parent_id)
-            insert_list.add(
-                (
-                    title,
-                    current_id, parent_id,
-                    comment, 1, editor, 1,
-                    insertable_text)
-            )
-
-
-def fetch(
-    ids=[],
-    last_time=datetime.utcnow(),
-    grccontinue=None,
-    rvcontinue=None,
-    limit=50,
-    idlimit=50,
-    rate=60/40
-):
-    global cache, insert_list, backlog
-    k = 5
-    cont = None
-    while k:
-        print('Epoch', k)
-        if cont:
-            print('\t\tContinue---------------------', success, total)
-            data = {**params_live,
-                    "generator": "recentchanges",
-                    "grcstart": last_time,
-                    "grcdir": "newer",
-                    "grclimit": limit,
-                    "grctoponly": 1,
-                    'continue': cont,
-                    'grctag': 'mw-rollback'
-                    }
-            if grccontinue:
-                data['grccontinue'] = grccontinue
-            if rvcontinue:
-                data['rvcontinue'] = rvcontinue
-        elif ids:
-            ids = list(map(str, backlog.union(ids)))
-            next_ids = []
-            if len(ids) > idlimit:
-                next_ids, ids = ids[idlimit:], ids[:idlimit]
-            data = {**params_live, 'revids': '|'.join(ids)}
-            ids = next_ids
-        elif last_time:
-            print('Fetching Live Changes')
-            if isinstance(last_time, str):
-                last_time = datetime.fromisoformat(last_time)
-            data = {**params_live,
-                    "generator": "recentchanges",
-                    "grcstart": last_time.isoformat(timespec='seconds'),
-                    "grcdir": "newer",
-                    "grclimit": limit,
-                    "grctoponly": 1,
-                    'grctag': 'mw-rollback'
-                    }
-        else:
-            print('neither Last Time nor Revision ID defined')
-
-        res = ses.post(
-            api_endpoint,
-            params=data,
-            headers={
-                'content-type': 'application/json'}).json()
-        if 'query' not in res:
-            print('Query Not found')
-            print(res)
+        result['diff'] = current_text
+        result['id'] = id
+        result['parent_id'] = parent_id
+        result['comment'] = comment
+        result['editor'] = editor
+        result['timestamp'] = timestamp
+        result['is_diff'] = False
+        result['title'] = page['title']
+        result['ns'] = page['ns']
+    else:
+        data = {
+            "action": "compare",
+            "format": "json",
+            "assertuser": "Nokib Sarkar",
+            "fromrev": older_revid,
+            "torev": newer_revid,
+            "prop": "diff|ids|title|comment|diffsize|rel|size|timestamp|user",
+            "slots": "main",
+            "difftype": "unified",
+            "formatversion": "2",
+            "utf8": "1"
+        }
+        response = WikiSession.post(data)
+        if 'error' in response:
+            print(response['error'])
             return
-        print(data)
-        cur.executemany(SQL_UPDATE_REVISION, process_batch(
-            ids=res['query']['pageids'],
-            query=res['query']['pages'],
-            cache=cache,
-            last_time=last_time
-        ))
-        for i in insert_list:
-            try:
-                cur.execute(SQL_INSERT_REVISION, i)
-            except sqlite3.IntegrityError as e:
-                print(f'Error {i[0]}')
-                backlog.discard(i[1])
-                pass
-        insert_list = set()
-        if 'continue' in res:
-            cont = res['continue']['continue']
-            print('Continual', res['continue'])
-            if 'grccontinue' in res['continue']:
-                grccontinue = res['continue']['grccontinue']
-            else:
-                grccontinue = None
-            if 'rvcontinue' in res['continue']:
-                rvcontinue = res['continue']['rvcontinue']
-            else:
-                rvcontinue = None
-        else:
-            cont = None
-        if backlog:
-            ids = backlog
-        k -= 1
+        compare = response['compare']
+        if 'bodies' not in compare:
+            print('No bodies found')
+            return
+        bodies = compare['bodies']
+        if 'main' not in bodies:
+            print('No main body found')
+            return
+        diff : str = bodies['main']
+        result['diff'] = diff
+        result['id'] = newer_revid
+        result['parent_id'] = older_revid
+        result['comment'] = compare['tocomment']
+        result['editor'] = compare['touser']
+        result['timestamp'] = datetime.fromisoformat(compare['totimestamp'][:-1])
+        result['is_diff'] = True
+        result['title'] = compare['totitle']
+        result['ns'] = compare['tons']
+    return result
+def _collect_compare(conn, older_revid, newer_revid):
+    # Check if the revision is already collected
+    row = conn.execute(_SQL_FETCH_REVISION_BY_ID, {'id': newer_revid}).fetchone()
+    if row is None:
+        result = _calculate_diff(older_revid, newer_revid)
+        if result is None:
+            return None
+        conn.execute(_SQL_INSERT_REVISION, result)
+        conn.commit()
+    return newer_revid
+def _collect_label(conn, rev_id, labeller, label):
+    conn.execute(_SQL_INSERT_LABEL, {
+        'rev_id': rev_id,
+        'labeller': labeller,
+        'label': label
+    })
+    conn.commit()
+    return rev_id
 
-        print(
-            f'Success Rate : {len(suceed)} / {total}  = {len(suceed) * 100/ total : 0.2f}%')
-        print(' \tSleeping ------------------------------------')
-        with open('time.txt', 'w') as fp:
-            fp.write(last_time.isoformat())
-        sleep(rate)
-if __name__ == '__main__':
-  try:
-    last_time : datetime = datetime.fromisoformat('2021-07-28T00:00:00')
-    print(last_time)
-    """
-    This script will be used for grabbing the rollbacks from wikipedia
-    """
-    # with open('time.txt', 'r') as fp:
-    #   last_time = datetime.fromisoformat(fp.read())
-    fetch(last_time=last_time)
-  except Exception as e:
-    # Id = 1
-    print('Error Happened : %s' % e)
-    print('Exiting....................')
+def collect_sample(conn, user_id, revisions, label):
+    for older_id, newer_id in revisions:
+        newer_id = _collect_compare(conn, older_id, newer_id)
+        if newer_id is None:
+            continue
+        _collect_label(conn, newer_id, user_id, label)

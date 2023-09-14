@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 
-from flask import Flask, request, Response, render_template
+from flask import Flask, request, Response, render_template, g
 from flask_cors import CORS, cross_origin
-import os
+import os, sqlite3
+from collect_data import collect_sample, WikiSession, SQL_INIT
 app = Flask(__name__)
 
 @app.route('/deploy/<string:token>')
@@ -15,13 +16,37 @@ def deploy(token):
 
 
 
+DATABASE_INIT = False
 
+@app.before_request
+def before_request():
+    g.db = sqlite3.connect("data.db")
+    global DATABASE_INIT
+    if not DATABASE_INIT:
+        g.db.execute(SQL_INIT)
+        g.db.commit()
+        DATABASE_INIT = True
+@app.after_request
+def after_request(response):
+    g.db.close()
+    return response
 
 
 @app.post("/sample/<int:user_id>")
 @cross_origin(origins="*")
-def collect_sample(user_id):
-    return str(user_id)
+def collect_samples(user_id):
+    data = request.get_json()
+    positives = []
+    negatives = []
+    len_positives = len(data['positives'])
+    len_negatives = len(data['negatives'])
+    for i in range(0, len_positives, 2):
+        positives.append((data['positives'][i], data['positives'][i+1]))
+    for i in range(0, len_negatives, 2):
+        negatives.append((data['negatives'][i], data['negatives'][i+1]))
+    collect_sample(g.db, user_id, positives, 'good')
+    collect_sample(g.db, user_id, negatives, 'bad')
+    return Response(status=200)
 
 
 @app.get('/subscribe')
@@ -43,6 +68,15 @@ def unsubscribe(user_id):
 @app.route('/terms')
 def terms():
     return render_template('terms.html')
+
+
+
+
+
+
+
+
+
 
 
 
