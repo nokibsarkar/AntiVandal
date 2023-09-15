@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from flask import Flask, request, Response, render_template, g
+from flask import Flask, request, Response, render_template, g, send_file
 from flask_cors import CORS, cross_origin
 import os, sqlite3
 from collect_data import collect_sample, WikiSession, SQL_INIT
@@ -37,6 +37,9 @@ def after_request(response):
     g.db.close()
     return response
 
+@app.get('/download')
+def download():
+    return send_file('data.db', as_attachment=True)
 
 @app.post("/sample/<int:user_id>")
 def collect_samples(user_id):
