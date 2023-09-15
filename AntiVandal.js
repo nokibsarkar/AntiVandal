@@ -41,8 +41,6 @@ class antiVandal {
                 }
                 parent.dataset.oldID = oldID;
             }
-
-            console.log(oldID)
             var goodButton = document.createElement("button"), badButton = document.createElement("button");
             goodButton.onclick = (e) => {
                 this.push(oldID, parent.dataset.mwRevid, 1);
