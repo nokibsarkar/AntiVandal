@@ -22,6 +22,7 @@ class antiVandal {
 
     selector = "li[data-mw-revid],tr[data-mw-revid] td.mw-enhanced-rc-nested, table[data-mw-revid] tbody tr td.mw-changeslist-line-inner"
     oldidRegex = /oldid=(\d+)/
+    diffElementSelector = 'span.mw-changeslist-links a.mw-changeslist-diff,span.mw-changeslist-links a[title="পূর্বের সংস্করণের সাথে পার্থক্য"]'
     init = function () {
         let o = document.querySelectorAll(this.selector);
         for (let i = 0; i < o.length; i++) {
@@ -29,27 +30,18 @@ class antiVandal {
             let parent = e instanceof HTMLLIElement ? e : e.classList.contains("mw-enhanced-rc-nested") ? e.parentElement : e.parentElement.parentElement.parentElement
             if (e.dataset.antiVandal == '1') //already visited
                 return;
-            let oldID = 0;
-            if (parent.dataset.oldID == undefined) {
-                const diffElement = parent.querySelector('a.mw-changeslist-diff');
-                if (diffElement) {
-                    const link = diffElement.href;
-                    oldID = link.match(this.oldidRegex)[1];
-                } else {
-                    console.log(parent)
-                    oldID = 0;
-                }
-                parent.dataset.oldID = oldID;
-            }
+            
             var goodButton = document.createElement("button"), badButton = document.createElement("button");
             goodButton.onclick = (e) => {
-                this.push(oldID, parent.dataset.mwRevid, 1);
+                e.preventDefault()
+                this.push(parent.dataset.mwRevid, 1);
                 e.target.style.background = 'grey';
                 e.target.nextElementSibling.style.background = 'grey';
                 e.target.nextElementSibling.onclick = function () { }
             }
             badButton.onclick = (e) => {
-                this.push(oldID, parent.dataset.mwRevid, 0)
+                e.preventDefault()
+                this.push(parent.dataset.mwRevid, 0)
                 e.target.style.background = 'grey';
                 e.target.previousElementSibling.style.background = 'grey';
                 e.target.previousElementSibling.onclick = function () { }
@@ -66,10 +58,10 @@ class antiVandal {
         }
     }
 
-    push = function (oldID, revid, label = 1) {
+    push = function (revid, label = 1) {
         label = 'label4antiVandal' + label;
         const content = localStorage.getItem(label) || '';
-        const value = (content ? content + "," : "") + oldID + "," + revid;
+        const value = (content ? content + "," : "")  + revid;
         localStorage.setItem(label, value);
         console.log("pushing " + revid + " to " + label)
     }
@@ -91,8 +83,8 @@ class antiVandal {
         ];
         let data = {
             by: this.user,
-            positive: pos,
-            negative: neg
+            positive: [...new Set(pos)],
+            negative: [...new Set(neg)]
         }
         console.log(data)
         const done = this.done;

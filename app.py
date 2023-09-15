@@ -41,21 +41,11 @@ def after_request(response):
 @app.post("/sample/<int:user_id>")
 def collect_samples(user_id):
     data = request.get_json()
-    if 'positivs' not in data:
-        positives = []
-        len_positives = len(data['positive'])
-        for i in range(0, len_positives, 2):
-            positives.append((data['positive'][i], data['positive'][i+1]))
-        collect_sample(g.db, user_id, positives, 'good')
-
-
+    if 'positive' in data:
+        collect_sample(g.db, user_id, map(int, data['positive']), 'good')
     if 'negative' in data:
-        negatives = []
-        len_negatives = len(data['negative'])
-        for i in range(0, len_negatives, 2):
-            negatives.append((data['negative'][i], data['negative'][i+1]))
-        collect_sample(g.db, user_id, negatives, 'bad')
-    return {'success' : True}
+        collect_sample(g.db, user_id, map(int, data['negative']), 'bad')
+    return data
 
 
 @app.get('/subscribe')
