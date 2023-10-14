@@ -118,11 +118,12 @@ class AntiVandal2 {
     }
     constructor() {
         this.user = mw.user.getId();
+        this.save = this.save.bind(this);
         this.target = "https://goodarticlebot.toolforge.org/sample/" + this.user;
         this.saver = setInterval(this.save, 60 * 1000);
         if (document.querySelector(this.parentSelector)) {
             this.captureRollbacks = this.captureRollbacks.bind(this);
-            this.save = this.save.bind(this);
+            
             this.captureRollbacks();
             observeDOM(document.querySelector('#mw-content-text'), this.captureRollbacks);
 
