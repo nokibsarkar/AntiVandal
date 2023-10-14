@@ -17,60 +17,80 @@ var observeDOM = (function () {
         }
     }
 })();
-// Do not edit below
-class antiVandal {
+class AntiVandal2 {
+    parentSelector = "li[data-mw-revid], table[data-mw-revid],tr.mw-changeslist-line,td.diff-ntitle,td.diff-otitle";
+    revIDSelector = "[data-mw-revid]";
+    undoSelector = 'span.mw-rollback-link,span.mw-history-undo,span.tw-rollback-link-vandalism';
+    vandalismMessage = 'Do you think this is a vandalism?\nOk - Yes (Vandalism), Cancel - No';
+    markAsVandalism = 'ধ্বংসপ্রবণতা';
+    enabledColor = '#ff0808d4'
+    disabledColor = 'rgb(137 75 75 / 83%)'
+    target = '';
+    user = '0';
+    captureRollbacks() {
+        console.info('captureRollbacks')
+        const self = this;
+        const revisions = document.querySelectorAll(self.parentSelector);
+        [...revisions].forEach((revision) => {
+            if (revision.dataset.antiVandal == '2') return;
+            var revid = revision.dataset.mwRevid;
+            if (!revid) {
+                const revID = revision.querySelector(self.revIDSelector);
+                if (revID) {
+                    revid = revID.dataset.mwRevid;
+                } else {
+                    return;
+                }
+            }
+            const takeFeedback = assumeVandalism => event => {
+                if (assumeVandalism || confirm(self.vandalismMessage)) {
+                    console.log('rollback clicked');
+                    console.info(self.push(revid, 0));
+                }
+            }
+            const rollBackButtons = revision.querySelectorAll(self.undoSelector);
+            if (rollBackButtons.length > 0) {
+                [...rollBackButtons].forEach((rollBackButton) => {
+                    rollBackButton.onclick = takeFeedback(false);
+                });
+            } else {
+                const MarkingButton = document.createElement('button');
+                MarkingButton.innerHTML = self.markAsVandalism;
+                MarkingButton.onclick = event => {
+                    takeFeedback(true)(event);
+                    event.target.style.background = self.disabledColor;
+                    event.target.style.cursor = 'not-allowed';
+                    event.target.innerText = 'ধ্বংসপ্রবণতা হিসাবে চিহ্নিত করা হয়েছে';
+                    event.target.onclick = function () { alert('Already marked as vandalism') };
+                }
+                MarkingButton.style.color = 'white';
+                MarkingButton.style.background = self.enabledColor;
+                MarkingButton.style.border = 'none';
+                MarkingButton.style.padding = '5px';
+                MarkingButton.style.borderRadius = '10px';
+                MarkingButton.style.margin = '3px';
+                MarkingButton.style.cursor = 'pointer';
+                revision.appendChild(MarkingButton);
+            }
+            revision.dataset.antiVandal = '2';
 
-    selector = "li[data-mw-revid],tr[data-mw-revid] td.mw-enhanced-rc-nested, table[data-mw-revid] tbody tr td.mw-changeslist-line-inner"
-    oldidRegex = /oldid=(\d+)/
-    diffElementSelector = 'span.mw-changeslist-links a.mw-changeslist-diff,span.mw-changeslist-links a[title="পূর্বের সংস্করণের সাথে পার্থক্য"]'
-    init = function () {
-        let o = document.querySelectorAll(this.selector);
-        for (let i = 0; i < o.length; i++) {
-            let e = o[i]
-            let parent = e instanceof HTMLLIElement ? e : e.classList.contains("mw-enhanced-rc-nested") ? e.parentElement : e.parentElement.parentElement.parentElement
-            if (e.dataset.antiVandal == '1') //already visited
-                return;
-            
-            var goodButton = document.createElement("button"), badButton = document.createElement("button");
-            goodButton.onclick = (e) => {
-                e.preventDefault()
-                this.push(parent.dataset.mwRevid, 1);
-                e.target.style.background = 'grey';
-                e.target.nextElementSibling.style.background = 'grey';
-                e.target.nextElementSibling.onclick = function () { }
-            }
-            badButton.onclick = (e) => {
-                e.preventDefault()
-                this.push(parent.dataset.mwRevid, 0)
-                e.target.style.background = 'grey';
-                e.target.previousElementSibling.style.background = 'grey';
-                e.target.previousElementSibling.onclick = function () { }
-            }
-            goodButton.innerHTML = 'Good'
-            badButton.innerHTML = 'Bad'
-            goodButton.style.color = 'green'
-            badButton.style.color = 'red'
-            goodButton.style.background = 'lime'
-            badButton.style.background = 'pink'
-            e.appendChild(goodButton);
-            e.appendChild(badButton);
-            e.dataset.antiVandal = '1';
-        }
+        });
+
     }
-
     push = function (revid, label = 1) {
         label = 'label4antiVandal' + label;
-        const content = localStorage.getItem(label) || '';
-        const value = (content ? content + "," : "")  + revid;
+        var value = localStorage.getItem(label) ? localStorage.getItem(label) + ',' + revid : revid;
         localStorage.setItem(label, value);
-        console.log("pushing " + revid + " to " + label)
+        return "pushing " + revid + " to " + label;
     }
 
     done = function (v) {
+        console.info("done", v)
         localStorage.removeItem('label4antiVandal0')
         localStorage.removeItem('label4antiVandal1')
     }
     save = function () {
+        const self = this;
         var neg = localStorage.getItem('label4antiVandal0') || '',
             pos = localStorage.getItem('label4antiVandal1') || '';
         if (pos == '' && neg == '') {
@@ -78,41 +98,39 @@ class antiVandal {
             return;
         }
         [neg, pos] = [
-            neg.split(',')?.filter(v => v != '').map(v => v * 1), // negative
-            pos.split(',')?.filter(v => v != '').map(v => 1 * v) //positive
+            [...new Set(neg.split(','))].map(v => v * 1).filter(v => v != 0), // negative
+            [...new Set(pos.split(','))].map(v => 1 * v).filter(v => v != 0) //positive
         ];
+        console.log(neg, pos)
         let data = {
-            by: this.user,
-            positive: [...new Set(pos)],
-            negative: [...new Set(neg)]
+            by: self.user,
+            positive: pos,
+            negative: neg
         }
-        console.log(data)
-        const done = this.done;
         $.post({
-            url: this.target,
+            url: self.target,
             crossDomain: true,
             data: JSON.stringify(data),
-            contentType: 'application/json',
+            contentType : 'application/json',
             dataType: 'json',
-            success: (d) => {
-                console.log(d)
-                done(d);
-            }
+            success: self.done
         });
     }
     constructor() {
         this.user = mw.user.getId();
         this.target = "https://goodarticlebot.toolforge.org/sample/" + this.user;
+        this.saver = setInterval(this.save, 60 * 1000);
+        if (document.querySelector(this.parentSelector)) {
+            this.captureRollbacks = this.captureRollbacks.bind(this);
+            this.save = this.save.bind(this);
+            this.captureRollbacks();
+            observeDOM(document.querySelector('#mw-content-text'), this.captureRollbacks);
 
-        this.init = this.init.bind(this);
-        this.save = this.save.bind(this);
-        this.init();
-        if (document.querySelector(this.selector)) {
-            this.timer = setInterval(this.init, 5 * 1000);
-            this.saver = setInterval(this.save, 60 * 1000);
+            // this.timer = setInterval(this.init, 5 * 1000);
         }
     }
 }
+var antiVandal = new AntiVandal2();
 
-var AntiVandal = new antiVandal();
-console.log(AntiVandal);
+// var AntiVandal = new antiVandal();
+// console.log(AntiVandal);
