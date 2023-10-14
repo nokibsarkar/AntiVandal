@@ -18,6 +18,7 @@ var observeDOM = (function () {
     }
 })();
 class AntiVandal2 {
+    version = '3'
     parentSelector = "li[data-mw-revid], table[data-mw-revid],tr.mw-changeslist-line,td.diff-ntitle,td.diff-otitle";
     revIDSelector = "[data-mw-revid]";
     undoSelector = 'span.mw-rollback-link,span.mw-history-undo,span.tw-rollback-link-vandalism';
@@ -32,7 +33,7 @@ class AntiVandal2 {
         const self = this;
         const revisions = document.querySelectorAll(self.parentSelector);
         [...revisions].forEach((revision) => {
-            if (revision.dataset.antiVandal == '2') return;
+            if (revision.dataset.antiVandal == this.version) return;
             var revid = revision.dataset.mwRevid;
             if (!revid) {
                 const revID = revision.querySelector(self.revIDSelector);
@@ -53,7 +54,7 @@ class AntiVandal2 {
                 [...rollBackButtons].forEach((rollBackButton) => {
                     rollBackButton.onclick = takeFeedback(false);
                 });
-            } else {
+            } {
                 const MarkingButton = document.createElement('button');
                 MarkingButton.innerHTML = self.markAsVandalism;
                 MarkingButton.onclick = event => {
@@ -72,7 +73,7 @@ class AntiVandal2 {
                 MarkingButton.style.cursor = 'pointer';
                 revision.appendChild(MarkingButton);
             }
-            revision.dataset.antiVandal = '2';
+            revision.dataset.antiVandal = self.version;
 
         });
 
@@ -111,7 +112,7 @@ class AntiVandal2 {
             url: self.target,
             crossDomain: true,
             data: JSON.stringify(data),
-            contentType : 'application/json',
+            contentType: 'application/json',
             dataType: 'json',
             success: self.done
         });
@@ -120,15 +121,16 @@ class AntiVandal2 {
         this.user = mw.user.getId();
         this.save = this.save.bind(this);
         this.target = "https://goodarticlebot.toolforge.org/sample/" + this.user;
-        this.saver = setInterval(this.save, 60 * 1000);
-        if (document.querySelector(this.parentSelector)) {
+         if (document.querySelector(this.parentSelector)) {
             this.captureRollbacks = this.captureRollbacks.bind(this);
-            
             this.captureRollbacks();
             observeDOM(document.querySelector('#mw-content-text'), this.captureRollbacks);
-
+            this.saver = setInterval(this.save, 60 * 1000);
+        
             // this.timer = setInterval(this.init, 5 * 1000);
         }
+        this.save()
+       
     }
 }
 var antiVandal = new AntiVandal2();
