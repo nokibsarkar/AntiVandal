@@ -143,5 +143,11 @@ def collect_sample(conn, user_id, revisions, label):
     for newer_id in revisions:
         _collect_compare(conn, newer_id)
         _collect_label(conn, newer_id, user_id, label)
+def get_revisions(conn, offset=0, limit=100):
+    return [row for row in conn.execute("SELECT * FROM `Revisions` ORDER BY `id` DESC LIMIT ? OFFSET ?", (limit, offset)).fetchall()]
+def get_labels(conn, revisions):
+    placeholder = ','.join('?'*len(revisions))
+
+    return [dict(row) for row in conn.execute(f"SELECT * FROM `Labels` WHERE `rev_id` IN ({placeholder})", revisions).fetchall()]
 
     

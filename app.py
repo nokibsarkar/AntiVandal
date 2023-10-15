@@ -2,8 +2,9 @@
 
 from flask import Flask, request, Response, render_template, g, send_file
 from flask_cors import CORS, cross_origin
-import os, sqlite3
-from collect_data import collect_sample, WikiSession, SQL_INIT
+import os, sqlite3, re
+PRE_PATTERN = re.compile('<pre>(.*?)</pre>', re.DOTALL)
+from collect_data import collect_sample, WikiSession, SQL_INIT, get_revisions, get_labels
 app = Flask(__name__)
 CORS(app, resources={
     "/sample/*": {
@@ -26,6 +27,7 @@ DATABASE_INIT = False
 @app.before_request
 def before_request():
     g.db = sqlite3.connect("data.db")
+    g.db.row_factory = sqlite3.Row
     global DATABASE_INIT
     if not DATABASE_INIT:
         WikiSession.init()
@@ -40,6 +42,24 @@ def after_request(response):
 @app.get('/download')
 def download():
     return send_file('data.db', as_attachment=True)
+@app.get('/sample')
+def samples():
+    limit = request.args.get('limit', 100)
+    offset = request.args.get('offset', 0)
+    if limit:
+        limit = int(limit)
+    if offset:
+        offset = max(int(offset), 0)
+    revisions = get_revisions(g.db, offset, limit)
+    if len(revisions) > 0:
+        next_url = f'/sample?limit={limit}&offset={offset+limit}'
+    else:
+        next_url = None
+    if offset > limit:
+        prev_url = f'/sample?limit={limit}&offset={offset-limit}'
+    else:
+        prev_url = None
+    return render_template('sample.html', revisions = revisions, PRE_PATTERN=PRE_PATTERN, next_url=next_url, prev_url=prev_url)
 
 @app.post("/sample/<int:user_id>")
 def collect_samples(user_id):

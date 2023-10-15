@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Samples</title>
+    <style>
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 0;
+        }
+
+        pre {
+
+            position: relative;
+            width: 90%;
+            /* text-wrap: balance; */
+        }
+
+        td {
+            text-align: center;
+            font-size: smaller;
+        }
+
+        td.comment, td.content {
+            text-align: left;
+            text-wrap: balance;
+        }
+    </style>
+    <script>
+        const Formater = new Intl.DateTimeFormat('bn-BD', {
+            dateStyle: 'medium',
+            timeStyle: 'medium',
+            timeZone: 'Asia/Dhaka'
+        });
+        function toDate(dateStr) {
+            document.write(Formater.format(new Date(dateStr)))
+        }
+    </script>
+</head>
+
+<body>
+    {% if prev_url %}
+    <a href="{{ prev_url }}"><button>Previous</button></a>
+    {% endif %}
+    {% if next_url %}
+    <a href="{{ next_url }}"><button>Next</button></a>
+    {% endif %}
+    <table border="1">
+        <thead>
+            <tr>
+                <th>Revision ID</th>
+                <th>Title</th>
+                <th>User</th>
+                <th>Comment</th>
+                <th>Timestamp</th>
+                <th>বিষয়বস্তু</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for revision in revisions %}
+            <tr>
+                <td>{{ revision.id }}</td>
+                <td>{{ revision.title }}</td>
+                <td>{{ revision.editor }}</td>
+                <td class="comment">{{ revision.comment }}</td>
+                <td><script>toDate("{{ revision.timestamp }}")</script></td>
+                <td class="content">
+                    <details>
+                        <summary>পার্থক্য</summary>
+                        <pre>{{ PRE_PATTERN.search(revision.diff).group(1) }}</pre>
+                    </details>
+                    
+                </td>
+            </tr>
+            {% endfor %}
+    </table>
+
+</body>
+
+</html>

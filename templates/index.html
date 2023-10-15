@@ -25,32 +25,75 @@
                 white-space: pre;
                 display: inline;
             }
+
+            img#screenshot {
+                position: relative;
+                width: 100%;
+                max-width: 700px;
+                border: 1px solid #ccc;
+                border-radius: 5px;
+                float: right;
+            }
+
+            #versions {
+                margin-top: 50px;
+                display: block;
+            }
+            #manual {
+                display: block;
+            }
         </style>
     </head>
 </head>
 
 <body>
-    <details open>
-        <summary>সর্বশেষ ভার্সন (ভার্সন ৩) : ১৫ই অক্টোবর ২০২৩ থেকে</summary>
-        <p>আপনার <code>common.js</code> ফাইলের শেষে নিচের লাইনটি যুক্ত করুন।</p>
-        <pre>
+    <h1>Installation</h1>
+    <p>আপনার <code>common.js</code> ফাইলের শেষে নিচের লাইনটি যুক্ত করুন।</p>
+    <pre>
+    ;mw.loader.load('/w/index.php?title=ব্যবহারকারী:Nokib Sarkar/antiVandal.js&action=raw&ctype=text/javascript');
+</pre>
+    <h1>ব্যবহার পদ্ধতি</h1>
+    <div id="manual">
+        <p><img src="static/vandalism prompt.png" alt="Vandalism button" id="screenshot" />
+            <b>পদ্ধতি ১</b>
+            আপনি আপনার সাম্প্রতিক পরিবর্তন, কোনো পাতার ইতিহাস প্রভৃতিতে স্বাভাবিকভাবেই রোলব্যাক বা পূনর্বহাল বাটনে ক্লিক করলে আপনাকে রোলব্যাক করার পূর্বে আপনাকে জিজ্ঞাসা করবে এটিকে আপনি ধ্বংসপ্রবণতা মনে করেন কি না।
+            আপনার উত্তর যা-ই হোক না কেন, আপনি যে কাজের উদ্দেশ্যে বাটনটি ক্লিক করেছে, সেই কাজটিই হবে। <br/>
+            <b style="color:red">
+                আপনি বাটন ক্লিক না করে যদি বাটনে থাকা লিংকটি কপি করে পরে অন্য কোনো ট্যাব করে ওপেন করে বাটনের লিংকটি পেস্ট করে এন্টার চাপেন,
+                সেক্ষেত্রে এই টুলটি কাজ করবে না। এই টুলটি কাজ করার জন্য আপনাকে বাটনে ক্লিক করতে হবে। তবে আপনি সেরকম করতে চাইলে পদ্ধতি ২ ব্যবহার করতে পারেন।
+            </b>
+        </p>
+        <p><img src="static/vandalism button.png" alt="চিত্র ২ ধ্বংসপ্রবণতা শনাক্তকারী লাল বাটন" id="screenshot" />
+            <b>পদ্ধতি ২</b>
+            আপনি আপনার সাম্প্রতিক পরিবর্তন, কোনো পাতার ইতিহাস প্রভৃতিতে ডানের চিত্র -২ এর মতো নতুন একটি বাটন <button
+                style="color: white; background: rgba(255, 8, 8, 0.83); border: none; padding: 5px; border-radius: 10px; margin: 3px; cursor: pointer;">ধ্বংসপ্রবণতা</button>
+            দেখতে পাবেন। কোনো সম্পাদনাকে ধ্বংসপ্রবণতা মনে হলে এই বাটনে ক্লিক করবেন। এতে বাটনের ঠিক উপরে থাকা সম্পাদনাটি ধ্বংসপ্রবণতা বলে গণ্য হবে।
+        </p>
+
+    </div>
+    <div id="versions">
+        <details open>
+            <summary>সর্বশেষ ভার্সন (ভার্সন ৩) : ১৫ই অক্টোবর ২০২৩ থেকে</summary>
+            <p>আপনার <code>common.js</code> ফাইলের শেষে নিচের লাইনটি যুক্ত করুন।</p>
+            <pre>
         ;mw.loader.load('/w/index.php?title=ব্যবহারকারী:Nokib Sarkar/antiVandal.js&action=raw&ctype=text/javascript');
     </pre>
-    </details>
-    <details>
-        <summary>ভার্সন ২ : ১৪ই অক্টোবর ২০২৩ থেকে</summary>
-        <p>আপনার <code>common.js</code> ফাইলের শেষে নিচের লাইনটি যুক্ত করুন।</p>
-        <pre>
+        </details>
+        <details>
+            <summary>ভার্সন ২ : ১৪ই অক্টোবর ২০২৩ থেকে</summary>
+            <p>আপনার <code>common.js</code> ফাইলের শেষে নিচের লাইনটি যুক্ত করুন।</p>
+            <pre>
         ;mw.loader.load('/w/index.php?title=ব্যবহারকারী:Nokib Sarkar/antiVandal2.js&action=raw&ctype=text/javascript');
     </pre>
-    </details>
-    <details>
-        <summary>ভার্সন ১: ১৫ই সেপ্টেম্বর ২০২৩ পর্যন্ত</summary>
-        <p>আপনার <code>common.js</code> ফাইলের শেষে নিচের লাইনটি যুক্ত করুন।</p>
-        <pre>
+        </details>
+        <details>
+            <summary>ভার্সন ১: ১৫ই সেপ্টেম্বর ২০২৩ পর্যন্ত</summary>
+            <p>আপনার <code>common.js</code> ফাইলের শেষে নিচের লাইনটি যুক্ত করুন।</p>
+            <pre>
         ;mw.loader.load('/w/index.php?title=ব্যবহারকারী:Nokib Sarkar/antiVandal1.js&action=raw&ctype=text/javascript');
     </pre>
-    </details>
+        </details>
+    </div>
 </body>
 
 </html>
