@@ -46,7 +46,7 @@ class AntiVandal2 {
             const takeFeedback = assumeVandalism => event => {
                 if (assumeVandalism || confirm(self.vandalismMessage)) {
                     console.log('rollback clicked');
-                    console.info(self.push(revid, 0));
+                    self.push(revid, 0)
                 }
             }
             const rollBackButtons = revision.querySelectorAll(self.undoSelector);
@@ -84,7 +84,7 @@ class AntiVandal2 {
         label = 'label4antiVandal' + label;
         var value = localStorage.getItem(label) ? localStorage.getItem(label) + ',' + revid : revid;
         localStorage.setItem(label, value);
-        return "pushing " + revid + " to " + label;
+        console.info("pushing " + revid + " to " + label)
     }
 
     done = function (v) {

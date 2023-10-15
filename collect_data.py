@@ -21,7 +21,8 @@ CREATE TABLE IF NOT EXISTS `Revisions` (
     `editor_anon` BOOLEAN DEFAULT FALSE,
     `editor_age_day` INT DEFAULT 0,
     `editor_edit_count` INT DEFAULT 0,
-    `editor_is_admin` BOOLEAN DEFAULT FALSE
+    `editor_is_admin` BOOLEAN DEFAULT FALSE,
+    `editor_groups` TEXT NULL DEFAULT NULL
 
 ) WITHOUT ROWID;
 CREATE INDEX IF NOT EXISTS `parent_id` ON `Revisions`(`parent_id`);
