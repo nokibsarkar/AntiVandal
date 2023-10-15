@@ -166,17 +166,17 @@ def _collect_further_info(conn, users, revisions):
         query = response['query']
         if 'pages' in query:
             for page in query['pages']:
-                revision = page['revisions'][0]
-                minor = revision['minor']
-                anon = revision.get('anon', False)
-                tags = ','.join(revision['tags'])
-                revision_info[revision['revid']] = {
-                    'id': revision['revid'],
-                    'minor': minor,
-                    'editor_anon': anon,
-                    'tags': tags,
-                    'editor_id': revision['userid'],
-                }
+                for revision in page['revisions']:
+                    minor = revision['minor']
+                    anon = revision.get('anon', False)
+                    tags = ','.join(revision['tags'])
+                    revision_info[revision['revid']] = {
+                        'id': revision['revid'],
+                        'minor': minor,
+                        'editor_anon': anon,
+                        'tags': tags,
+                        'editor_id': revision['userid'],
+                    }
         if 'users' in query:
             for user in query['users']:
                 registration_timestamp = datetime.fromisoformat(user['registration'][:-1])
@@ -212,7 +212,7 @@ def _collect_further_info(conn, users, revisions):
             `editor_edit_count` = :editor_edit_count,
             `editor_is_admin` = :editor_is_admin,
             `editor_groups` = :editor_groups
-        WHERE `id` = :id
+        WHERE `id` = :id AND `editor_id` = :editor_id AND `editor_age_day` = 0;
         """, insertables)
         conn.commit()
     print("Collecting further info", users, revisions)
