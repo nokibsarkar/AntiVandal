@@ -2,8 +2,7 @@
 
 from flask import Flask, request, Response, render_template, g, send_file
 from flask_cors import CORS, cross_origin
-import os, sqlite3, re
-PRE_PATTERN = re.compile('<pre>(.*?)</pre>', re.DOTALL)
+import os, sqlite3
 from collect_data import collect_sample, WikiSession, SQL_INIT, get_revisions, get_labels
 app = Flask(__name__)
 CORS(app, resources={
@@ -59,7 +58,7 @@ def samples():
         prev_url = f'/sample?limit={limit}&offset={offset-limit}'
     else:
         prev_url = None
-    return render_template('sample.html', revisions = revisions, PRE_PATTERN=PRE_PATTERN, next_url=next_url, prev_url=prev_url)
+    return render_template('sample.html', revisions = revisions, next_url=next_url, prev_url=prev_url)
 
 @app.post("/sample/<int:user_id>")
 def collect_samples(user_id):
