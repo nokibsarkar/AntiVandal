@@ -54,7 +54,7 @@ def samples():
         next_url = f'/sample?limit={limit}&offset={offset+limit}'
     else:
         next_url = None
-    if offset > limit:
+    if offset > 0:
         prev_url = f'/sample?limit={limit}&offset={offset-limit}'
     else:
         prev_url = None
