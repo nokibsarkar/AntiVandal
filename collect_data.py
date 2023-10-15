@@ -11,9 +11,18 @@ CREATE TABLE IF NOT EXISTS `Revisions` (
     `diff` TEXT NULL DEFAULT NULL,
     `parent_id` INTEGER NULL DEFAULT NULL,
     `comment` TEXT NULL DEFAULT NULL,
-    `editor` TEXT NULL DEFAULT NULL,
     `timestamp` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    `is_diff` BOOLEAN DEFAULT FALSE
+
+    `editor` TEXT NULL DEFAULT NULL,
+    `is_diff` BOOLEAN DEFAULT FALSE,
+    `minor` BOOLEAN DEFAULT FALSE,
+    `tags` TEXT NULL DEFAULT NULL,
+    `editor_id` INT DEFAULT 0,
+    `editor_anon` BOOLEAN DEFAULT FALSE,
+    `editor_age_day` INT DEFAULT 0,
+    `editor_edit_count` INT DEFAULT 0,
+    `editor_is_admin` BOOLEAN DEFAULT FALSE
+
 ) WITHOUT ROWID;
 CREATE INDEX IF NOT EXISTS `parent_id` ON `Revisions`(`parent_id`);
 CREATE TABLE IF NOT EXISTS `Labels` (
@@ -82,6 +91,7 @@ def _calculate_diff(newer_revid):
         'parent_id': None,
         'comment': None,
         'editor': None,
+        'editor_id': None,
         'timestamp': None,
         'is_diff': True
     }
@@ -119,17 +129,100 @@ def _calculate_diff(newer_revid):
     result['is_diff'] = True
     result['title'] = compare['totitle']
     result['ns'] = compare['tons']
+    result['editor_id'] = compare['touserid']
     return result
+def _collect_further_info(conn, users, revisions):
+    BATCH_SIZE = 50
+    users = list(users)
+    revisions = list(revisions)
+    user_info = {}
+    revision_info = {}
+    while len(users) + len(revisions) > 0:
+        batch_users = users[:BATCH_SIZE]
+        batch_revisions = revisions[:BATCH_SIZE]
+        users = users[BATCH_SIZE:]
+        revisions = revisions[BATCH_SIZE:]
+        params = {
+            "action": "query",
+            "format": "json",
+            "prop": "revisions",
+            "list": "users",
+            "formatversion": "2",
+            "revids": '|'.join(map(str, batch_revisions)),
+            "rvprop": "flags|tags|userid|ids",
+            "usprop": "editcount|groups|registration",
+            "ususerids": '|'.join(map(str, batch_users)),
+        }
+        response = WikiSession.get(params)
+        if 'error' in response:
+            print(response['error'])
+            continue
+        if 'query' not in response:
+            print(response)
+            continue
+        query = response['query']
+        if 'pages' in query:
+            for page in query['pages']:
+                revision = page['revisions'][0]
+                minor = revision['minor']
+                anon = revision.get('anon', False)
+                tags = ','.join(revision['tags'])
+                revision_info[revision['revid']] = {
+                    'id': revision['revid'],
+                    'minor': minor,
+                    'editor_anon': anon,
+                    'tags': tags,
+                    'editor_id': revision['userid'],
+                }
+        if 'users' in query:
+            for user in query['users']:
+                registration_timestamp = datetime.fromisoformat(user['registration'][:-1])
+                user_age_days = (datetime.now() - registration_timestamp).days
+                edit_count = user['editcount']
+                is_admin = 'sysop' in user['groups']
+                groups = ','.join(user['groups'])
+                user_info[user['userid']] = {
+                    'editor_age_day': user_age_days,
+                    'editor_edit_count': edit_count,
+                    'editor_is_admin': is_admin,
+                    'editor_groups': groups
+                }
+        insertables = []
+        anonymous_user = {
+            'editor_age_day': 0,
+            'editor_edit_count': 1,
+            'editor_is_admin': False,
+            'editor_groups': ''
+        }
+        for revision_id, revision in revision_info.items():
+            user = user_info.get(revision['editor_id'], anonymous_user)
+            revision = {**revision, **user}
+            insertables.append(revision)
+        conn.executemany("""
+        UPDATE `Revisions`
+        SET
+            `minor` = :minor,
+            `editor_anon` = :editor_anon,
+            `tags` = :tags,
+            `editor_age_day` = :editor_age_day,
+            `editor_edit_count` = :editor_edit_count,
+            `editor_is_admin` = :editor_is_admin,
+            `editor_groups` = :editor_groups
+        WHERE `id` = :id
+        """, insertables)
+        conn.commit()
+    print("Collecting further info", users, revisions)
+    pass
 def _collect_compare(conn, newer_revid):
     # Check if the revision is already collected
     row = conn.execute(_SQL_FETCH_REVISION_BY_ID, {'id': newer_revid}).fetchone()
     if row is None:
         result = _calculate_diff(newer_revid)
         if result is None:
-            return None
+            return 0
         conn.execute(_SQL_INSERT_REVISION, result)
         conn.commit()
-    return newer_revid
+        return result['editor_id']
 def _collect_label(conn, rev_id, labeller, label):
     conn.execute(_SQL_INSERT_LABEL, {
         'rev_id': rev_id,
@@ -140,9 +233,16 @@ def _collect_label(conn, rev_id, labeller, label):
     return rev_id
 
 def collect_sample(conn, user_id, revisions, label):
+    users = set()
+    revisions = list(revisions)
     for newer_id in revisions:
-        _collect_compare(conn, newer_id)
+        contributor = _collect_compare(conn, newer_id)
         _collect_label(conn, newer_id, user_id, label)
+        users.add(contributor)
+    users.discard(None)
+    users.discard(0)
+    _collect_further_info(conn, users, revisions)
+
 def get_revisions(conn, offset=0, limit=100):
     return [row for row in conn.execute("SELECT * FROM `Revisions` ORDER BY `id` DESC LIMIT ? OFFSET ?", (limit, offset)).fetchall()]
 def get_labels(conn, revisions):
