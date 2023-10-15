@@ -201,22 +201,19 @@ def _collect_further_info(conn, users, revisions):
             user = user_info.get(revision['editor_id'], anonymous_user)
             revision = {**revision, **user}
             insertables.append(revision)
-        print(insertables)
-        conn.executemany("""
-        UPDATE `Revisions`
-        SET
-            `minor` = :minor,
-            `editor_anon` = :editor_anon,
-            `tags` = :tags,
-            `editor_age_day` = :editor_age_day,
-            `editor_edit_count` = :editor_edit_count,
-            `editor_is_admin` = :editor_is_admin,
-            `editor_groups` = :editor_groups
-        WHERE `id` = :id AND `editor_id` = :editor_id AND `editor_age_day` = 0;
-        """, insertables)
-        conn.commit()
-    print("Collecting further info", users, revisions)
-    pass
+    conn.executemany("""
+    UPDATE `Revisions`
+    SET
+        `minor` = :minor,
+        `editor_anon` = :editor_anon,
+        `tags` = :tags,
+        `editor_age_day` = :editor_age_day,
+        `editor_edit_count` = :editor_edit_count,
+        `editor_is_admin` = :editor_is_admin,
+        `editor_groups` = :editor_groups
+    WHERE `id` = :id AND `editor_id` = :editor_id AND `editor_age_day` = 0;
+    """, insertables)
+    conn.commit()
 def _collect_compare(conn, newer_revid):
     # Check if the revision is already collected
     row = conn.execute(_SQL_FETCH_REVISION_BY_ID, {'id': newer_revid}).fetchone()
