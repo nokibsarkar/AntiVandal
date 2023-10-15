@@ -3,6 +3,8 @@ from datetime import datetime
 from time import sleep
 from requests import Session
 from settings import OAUTH_ACCESS_TOKEN
+import re
+PRE_PATTERN = re.compile('<pre>(.*?)</pre>', re.DOTALL)
 SQL_INIT = """
 CREATE TABLE IF NOT EXISTS `Revisions` (
     `id` INTEGER PRIMARY KEY,
@@ -35,9 +37,9 @@ CREATE TABLE IF NOT EXISTS `Labels` (
 """
 _SQL_INSERT_REVISION = """
 INSERT INTO `Revisions`
-    (`id`, `title`, `ns`, `diff`, `parent_id`, `comment`, `editor`, `timestamp`, `is_diff`)
+    (`id`, `title`, `ns`, `diff`, `parent_id`, `comment`, `editor`, `timestamp`, `is_diff`, `editor_id`)
 VALUES
-    (:id, :title, :ns, :diff, :parent_id, :comment, :editor, :timestamp, :is_diff);
+    (:id, :title, :ns, :diff, :parent_id, :comment, :editor, :timestamp, :is_diff, :editor_id);
 """
 _SQL_INSERT_LABEL = """
 INSERT INTO `Labels`
@@ -121,7 +123,7 @@ def _calculate_diff(newer_revid):
         print('No main body found')
         return
     diff : str = bodies['main']
-    result['diff'] = diff
+    result['diff'] = PRE_PATTERN.search(diff).group(1)
     result['id'] = newer_revid
     result['parent_id'] = compare.get('fromrevid', None)
     result['comment'] = compare['tocomment']
@@ -199,6 +201,7 @@ def _collect_further_info(conn, users, revisions):
             user = user_info.get(revision['editor_id'], anonymous_user)
             revision = {**revision, **user}
             insertables.append(revision)
+        print(insertables)
         conn.executemany("""
         UPDATE `Revisions`
         SET
