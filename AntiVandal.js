@@ -56,8 +56,10 @@ class AntiVandal2 {
                 });
             } {
                 const MarkingButton = document.createElement('button');
+                MarkingButton.type = 'button';
                 MarkingButton.innerHTML = self.markAsVandalism;
                 MarkingButton.onclick = event => {
+
                     takeFeedback(true)(event);
                     event.target.style.background = self.disabledColor;
                     event.target.style.cursor = 'not-allowed';
