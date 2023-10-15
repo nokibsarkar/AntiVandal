@@ -140,6 +140,7 @@ def _collect_further_info(conn, users, revisions):
     revisions = list(revisions)
     user_info = {}
     revision_info = {}
+    
     while len(users) + len(revisions) > 0:
         batch_users = users[:BATCH_SIZE]
         batch_revisions = revisions[:BATCH_SIZE]
@@ -190,17 +191,17 @@ def _collect_further_info(conn, users, revisions):
                     'editor_is_admin': is_admin,
                     'editor_groups': groups
                 }
-        insertables = []
-        anonymous_user = {
-            'editor_age_day': 0,
-            'editor_edit_count': 1,
-            'editor_is_admin': False,
-            'editor_groups': ''
-        }
-        for revision_id, revision in revision_info.items():
-            user = user_info.get(revision['editor_id'], anonymous_user)
-            revision = {**revision, **user}
-            insertables.append(revision)
+    insertables = []
+    anonymous_user = {
+        'editor_age_day': 0,
+        'editor_edit_count': 1,
+        'editor_is_admin': False,
+        'editor_groups': ''
+    }
+    for revision_id, revision in revision_info.items():
+        user = user_info.get(revision['editor_id'], anonymous_user)
+        revision = {**revision, **user}
+        insertables.append(revision)
     conn.executemany("""
     UPDATE `Revisions`
     SET
