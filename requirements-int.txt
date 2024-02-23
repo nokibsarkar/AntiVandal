@@ -10,3 +10,4 @@ matplotlib
 sqlite3
 # string comparison
 diff-match-patch/python3
+pillow>=10.2.0 # not directly required, pinned by Snyk to avoid a vulnerability
